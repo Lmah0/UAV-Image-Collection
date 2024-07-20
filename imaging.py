@@ -18,12 +18,13 @@ import requests
 from threading import Thread
 from pymavlink import mavutil
 
+gcs_url = "http://192.168.1.65:80"
+vehicle_port = "udp:127.0.0.1:5006"
+
 DELAY = 1 # Amount of time between taking each picture
 picam2 = None
 vehicle_connection = None
-
-gcs_url = "http://192.168.1.65:80"
-vehicle_port = "udp:127.0.0.1:5006"
+UDP_PORT = 5005
 
 vehicle_data = {
         "last_time": 0,
@@ -40,9 +41,6 @@ vehicle_data = {
         "heading": 0
 }
 
-UDP_PORT = 5005
-DELAY = 1
-
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
@@ -51,6 +49,8 @@ def trigger_camera():
     # Requires the amount of existing images on the GCS server
     # Requires the amount of images wanting to be taken
 
+    global picam2
+
     data = request.json
     try:
         amount_of_images_requested = int(data["amount_of_images"])
@@ -58,7 +58,7 @@ def trigger_camera():
     except Exception as e:
         exit(1)
 
-    camera = Picamera2()
+    picam2 = Picamera2()
     camera_config = picam2.create_still_configuration()
     picam2.configure(camera_config)
     picam2.start_preview(Preview.NULL)
@@ -66,13 +66,17 @@ def trigger_camera():
     time.sleep(1)
 
     for i in range(amount_of_images_requested):
-        take_picture()
-
+        time_to_take_and_receive_photo = take_picture(i, picam2, amount_of_images_taken_already)
+        delay_time_remaining = DELAY - time_to_take_and_receive_photo
+        if delay_time_remaining > 0:
+            time.sleep(delay_time_remaining)
     
+    picam2.stop()
+    return { "message": "Success!"}, 200
 
-def take_picture():
+def take_picture(i, picam2, amount_of_images_taken_already):
     image_number = amount_of_images_taken_already + i
-    camera.capture(f"Beginning capturing capture{image_number}.jpg")
+    print(f"Beginning capturing capture{image_number}.jpg")
     start_time = time.time()
 
     # Capture image into a temporary BytesIO object
@@ -105,7 +109,7 @@ def take_picture():
     if (http_error_present(response)):
         return
     
-    return time.time()
+    return time.time() - start_time
 
 
 def http_error_present(response):
