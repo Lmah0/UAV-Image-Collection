@@ -16,10 +16,15 @@ import sys
 import time
 import requests
 from threading import Thread
+from pymavlink import mavutil
 
 DELAY = 1 # Amount of time between taking each picture
+picam2 = None
+vehicle_connection = None
 
 gcs_url = "http://192.168.1.65:80"
+vehicle_port = "udp:127.0.0.1:5006"
+
 vehicle_data = {
         "last_time": 0,
         "lat": 0,
@@ -61,32 +66,9 @@ def trigger_camera():
     time.sleep(1)
 
     for i in range(amount_of_images_requested):
-        image_number = amount_of_images_taken_already + i
-        camera.capture(f"Beginning capturing capture{image_number}.jpg")
-        start_time = time.time()
+        take_picture()
 
-        # Capture image into a temporary BytesIO object
-        image_stream = BytesIO()
-        image = picam2.capture_image('main')
-        image.save(image_stream, format='JPEG')
-        image_stream.seek(0)
-
-        # Serialize vehicle data into a JSON string
-        vehicle_data_json = json.dumps(vehicle_data)
-
-        # Send image to GCS
-        files = {
-            'file': (f'capture{image_number}.jpg', image_stream, 'image/jpeg'),
-        }
-        headers = {} # API Request headers
-        response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=files)
-
-        # Send JSON to GCS (note that these need to be sent in a separate API request due to body datatype)
-        json_stream = BytesIO(vehicle_data_json.encode('utf-8'))
-        json_files = {
-            'file': (f'capture{image_number}.json', json_stream, 'application/json'),
-        }
-        response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=json_files)
+    
 
 def take_picture():
     image_number = amount_of_images_taken_already + i
@@ -119,6 +101,7 @@ def take_picture():
         'file': (f'capture{image_number}.json', json_stream, 'application/json'),
     }
     response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=json_files)
+    
     if (http_error_present(response)):
         return
     
@@ -155,11 +138,35 @@ def receive_vehicle_position():
     vehicle_data["dalt"] = float(items[10])
     vehicle_data["heading"] = float(items[11])
 
+def verify_connection(vehicle_connection):
+    # PROMISES: Vehicle heartbeat will be verified
+    # REQUIRES: Vehicle connection
+    # Verify vehicle heartbeat
+
+    vehicle_connection.wait_heartbeat()
+    print("Heartbeat from system (system %u component %u)" %
+        (vehicle_connection.target_system, vehicle_connection.target_component))
+    return True
+
+def connect_to_vehicle(port):
+    # PROMISES: Connection to the vehicle will be established
+    # REQUIRES: Vehicle network port
+    # Connect to the vehicle
+
+    vehicle_connection = mavutil.mavlink_connection(port)
+    return vehicle_connection
+
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         gcs_url = sys.argv[1]
 
     position_thread = Thread(target=receive_vehicle_position, daemon=True)
     position_thread.start()
+    
+    print("Attempting to connect to vehicle port: {vehicle_port}")
+    vehicle_connection = connect_to_vehicle(vehicle_port)
+    print("Vehicle connection established.")
+    retVal = verify_connection(vehicle_connection)
+    print("Vehicle connection verified.")
 
     app.run(debug=True, host='0.0.0.0')
