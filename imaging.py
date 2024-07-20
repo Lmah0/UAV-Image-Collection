@@ -17,6 +17,8 @@ import time
 import requests
 from threading import Thread
 
+DELAY = 1 # Amount of time between taking each picture
+
 gcs_url = "http://192.168.1.65:80"
 vehicle_data = {
         "last_time": 0,
@@ -41,7 +43,93 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route("/trigger_camera", methods=["POST"])
 def trigger_camera():
-    pass
+    # Requires the amount of existing images on the GCS server
+    # Requires the amount of images wanting to be taken
+
+    data = request.json
+    try:
+        amount_of_images_requested = int(data["amount_of_images"])
+        amount_of_images_taken_already = int(data["image_start_index"])
+    except Exception as e:
+        exit(1)
+
+    camera = Picamera2()
+    camera_config = picam2.create_still_configuration()
+    picam2.configure(camera_config)
+    picam2.start_preview(Preview.NULL)
+    picam2.start()
+    time.sleep(1)
+
+    for i in range(amount_of_images_requested):
+        image_number = amount_of_images_taken_already + i
+        camera.capture(f"Beginning capturing capture{image_number}.jpg")
+        start_time = time.time()
+
+        # Capture image into a temporary BytesIO object
+        image_stream = BytesIO()
+        image = picam2.capture_image('main')
+        image.save(image_stream, format='JPEG')
+        image_stream.seek(0)
+
+        # Serialize vehicle data into a JSON string
+        vehicle_data_json = json.dumps(vehicle_data)
+
+        # Send image to GCS
+        files = {
+            'file': (f'capture{image_number}.jpg', image_stream, 'image/jpeg'),
+        }
+        headers = {} # API Request headers
+        response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=files)
+
+        # Send JSON to GCS (note that these need to be sent in a separate API request due to body datatype)
+        json_stream = BytesIO(vehicle_data_json.encode('utf-8'))
+        json_files = {
+            'file': (f'capture{image_number}.json', json_stream, 'application/json'),
+        }
+        response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=json_files)
+
+def take_picture():
+    image_number = amount_of_images_taken_already + i
+    camera.capture(f"Beginning capturing capture{image_number}.jpg")
+    start_time = time.time()
+
+    # Capture image into a temporary BytesIO object
+    image_stream = BytesIO()
+    image = picam2.capture_image('main')
+    image.save(image_stream, format='JPEG')
+    image_stream.seek(0)
+
+    # Serialize vehicle data into a JSON string
+    vehicle_data_json = json.dumps(vehicle_data)
+
+    # Send image to GCS
+    headers = {} # API Request headers
+
+    files = {
+        'file': (f'capture{image_number}.jpg', image_stream, 'image/jpeg'),
+    }
+    response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=files)
+
+    if (http_error_present(response)):
+        return
+
+    # Send JSON to GCS (note that these need to be sent in a separate API request due to body datatype)
+    json_stream = BytesIO(vehicle_data_json.encode('utf-8'))
+    json_files = {
+        'file': (f'capture{image_number}.json', json_stream, 'application/json'),
+    }
+    response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=json_files)
+    if (http_error_present(response)):
+        return
+    
+    return time.time()
+
+
+def http_error_present(response):
+    if response.status_code != 200:
+        print(f"Error: {response.status_code}")
+        return True
+    return False
 
 def receive_vehicle_position():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
