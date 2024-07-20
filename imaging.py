@@ -2,16 +2,12 @@ from picamera2 import Picamera2, Preview
 import sys
 import time
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from flask_cors import CORS
-import threading
 import requests
 import socket
-import types
 import json
-from os import path
 from picamera2 import Picamera2, Preview
-import argparse
 import sys
 import time
 import requests
