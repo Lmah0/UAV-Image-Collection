@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geolocation Data Trigger</title>
+</head>
+<body>
+    <h1>Fetch Geolocation Data</h1>
+    <form id="cameraForm">
+        <label for="amount_of_images">Amount of Images:</label>
+        <input type="number" id="amount_of_images" name="amount_of_images" required>
+        <button type="submit">Submit</button>
+    </form>
+
+    <p id="responseMessage"></p>
+
+    <script>
+        let DRONE_IP ='192.168.1.67';
+
+        document.getElementById("cameraForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            const amountOfImages = document.getElementById("amount_of_images").value;
+            const data = { amount_of_images: amountOfImages };
+
+            fetch(`"${DRONE_IP}/trigger_camera`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("responseMessage").textContent = data.message;
+            })
+            .catch((error) => {
+                document.getElementById("responseMessage").textContent = "An error occurred: " + error.message;
+            });
+        });
+    </script>
+</body>
+</html>

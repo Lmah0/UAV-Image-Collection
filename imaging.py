@@ -1,10 +1,5 @@
-from picamera2 import Picamera2, Preview
-import sys
-import time
-import requests
 from flask import Flask, request
 from flask_cors import CORS
-import requests
 import socket
 import json
 from picamera2 import Picamera2, Preview
@@ -42,7 +37,6 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route("/trigger_camera", methods=["POST"])
 def trigger_camera():
-    # Requires the amount of existing images on the GCS server
     # Requires the amount of images wanting to be taken
 
     global picam2
@@ -50,7 +44,6 @@ def trigger_camera():
     data = request.json
     try:
         amount_of_images_requested = int(data["amount_of_images"])
-        amount_of_images_taken_already = int(data["image_start_index"])
     except Exception as e:
         exit(1)
 
@@ -62,7 +55,7 @@ def trigger_camera():
     time.sleep(1)
 
     for i in range(amount_of_images_requested):
-        time_to_take_and_receive_photo = take_picture(i, picam2, amount_of_images_taken_already)
+        time_to_take_and_receive_photo = take_picture(i, picam2)
         delay_time_remaining = DELAY - time_to_take_and_receive_photo
         if delay_time_remaining > 0:
             time.sleep(delay_time_remaining)
@@ -70,8 +63,7 @@ def trigger_camera():
     picam2.stop()
     return { "message": "Success!"}, 200
 
-def take_picture(i, picam2, amount_of_images_taken_already):
-    image_number = amount_of_images_taken_already + i
+def take_picture(image_number, picam2):
     print(f"Beginning capturing capture{image_number}.jpg")
     start_time = time.time()
 
@@ -168,5 +160,7 @@ if __name__ == "__main__":
     print("Vehicle connection established.")
     retVal = verify_connection(vehicle_connection)
     print("Vehicle connection verified.")
+
+    print("\nBeginning server with valid vehicle connection...")
 
     app.run(debug=True, host='0.0.0.0')
