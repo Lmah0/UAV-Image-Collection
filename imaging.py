@@ -38,10 +38,9 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 @app.route("/trigger_camera", methods=["POST"])
 def trigger_camera():
     # Requires the amount of images wanting to be taken
-
     global picam2
-
     data = request.json
+    
     try:
         amount_of_images_requested = int(data["amount_of_images"])
     except Exception as e:
