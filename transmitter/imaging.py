@@ -1,15 +1,19 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+from math import ceil
 import socket
 import json
 from picamera2 import Picamera2, Preview
 import sys
 import time
 import requests
-from threading import Thread
+import threading
+from os import path
 from pymavlink import mavutil
+from io import BytesIO
 
-gcs_url = "http://192.168.1.65:80"
+
+gcs_url = "http://192.168.1.64:80"
 vehicle_port = "udp:127.0.0.1:5006"
 
 DELAY = 1 # Amount of time between taking each picture
@@ -46,16 +50,18 @@ def trigger_camera():
     except Exception as e:
         exit(1)
 
-    picam2 = Picamera2()
-    camera_config = picam2.create_still_configuration()
-    picam2.configure(camera_config)
-    picam2.start_preview(Preview.NULL)
-    picam2.start()
-    time.sleep(1)
+    if picam2 is None:
+        picam2 = Picamera2()
+        camera_config = picam2.create_still_configuration()
+        picam2.configure(camera_config)
+        picam2.start_preview(Preview.NULL)
+        picam2.start()
+        time.sleep(1)
+    else:
+        picam2.start()
 
     for i in range(amount_of_images_requested):
-        time_to_take_and_receive_photo = take_picture(i, picam2)
-        delay_time_remaining = DELAY - time_to_take_and_receive_photo
+        delay_time_remaining = DELAY - take_picture(i, picam2)
         if delay_time_remaining > 0:
             time.sleep(delay_time_remaining)
     
@@ -79,22 +85,16 @@ def take_picture(image_number, picam2):
     headers = {} # API Request headers
 
     files = {
-        'file': (f'capture{image_number}.jpg', image_stream, 'image/jpeg'),
+        'file': (f'capture.jpg', image_stream, 'image/jpeg'),
     }
     response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=files)
-
-    if (http_error_present(response)):
-        return
 
     # Send JSON to GCS (note that these need to be sent in a separate API request due to body datatype)
     json_stream = BytesIO(vehicle_data_json.encode('utf-8'))
     json_files = {
-        'file': (f'capture{image_number}.json', json_stream, 'application/json'),
+        'file': (f'capture.json', json_stream, 'application/json'),
     }
     response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=json_files)
-    
-    if (http_error_present(response)):
-        return
     
     return time.time() - start_time
 
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         gcs_url = sys.argv[1]
 
-    position_thread = Thread(target=receive_vehicle_position, daemon=True)
+    position_thread = threading.Thread(target=receive_vehicle_position, daemon=True)
     position_thread.start()
     
     print("Attempting to connect to vehicle port: {vehicle_port}")
