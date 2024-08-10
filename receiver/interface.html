@@ -16,28 +16,28 @@
     <p id="responseMessage"></p>
 
     <script>
-        let DRONE_IP ='192.168.1.67';
+        let DRONE_IP = '192.168.1.67';
 
-        document.getElementById("cameraForm").addEventListener("submit", function(event) {
+        document.getElementById("cameraForm").addEventListener("submit", async function(event) {
             event.preventDefault();
             
             const amountOfImages = document.getElementById("amount_of_images").value;
             const data = { amount_of_images: amountOfImages };
-
-            fetch(`"${DRONE_IP}/trigger_camera`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("responseMessage").textContent = data.message;
-            })
-            .catch((error) => {
+            
+            try {
+                const response = await fetch(`http://${DRONE_IP}:5000/trigger_camera`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                document.getElementById("responseMessage").textContent = result.message;
+            } catch (error) {
                 document.getElementById("responseMessage").textContent = "An error occurred: " + error.message;
-            });
+            }
         });
     </script>
 </body>
