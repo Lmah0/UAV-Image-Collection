@@ -17,32 +17,6 @@ def fetch_amount_of_images():
     number_of_files = len(jpg_files)
     return number_of_files
 
-# @app.post('/submit/')
-# def submit_data():
-#     file = request.files["file"] #file must be attached in body with name "file"
-
-#     # Determine whether it is a jpg or json file
-#     capture_number = file.filename[6:]
-#     filename = f'capture{AMOUNT_OF_IMAGES + int(capture_number)}'
-
-#     if file.filename.endswith('.json'):
-#         filename = filename + '.json'
-#     else:
-#         filename = filename + '.jpg'
-    
-#     file.save('./geodata/' + filename) #saves the image
-#     print('Saved file', file.filename)
-#     return 'ok'
-
-# @app.post('/submit/')
-# def submit_data():
-#     file = request.files["file"] #file must be attached in body with name "file"
-#     file.save('./geodata/' + file.filename) #saves the image
-#     print('Saved file', file.filename)
-#     #Perform YOLO detections - all detections should be moved to a queue and handled by seperate thread at some point
-#     #yolo.image_detections(file.filename)
-#     return 'ok'
-
 @app.post('/submit/')
 def submit_data():
     file = request.files["file"]
