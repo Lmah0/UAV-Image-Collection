@@ -129,23 +129,23 @@ def receive_vehicle_position():
     vehicle_data["dalt"] = float(items[10])
     vehicle_data["heading"] = float(items[11])
 
-def verify_connection(vehicle_connection):
-    # PROMISES: Vehicle heartbeat will be verified
-    # REQUIRES: Vehicle connection
-    # Verify vehicle heartbeat
+# def verify_connection(vehicle_connection):
+#     # PROMISES: Vehicle heartbeat will be verified
+#     # REQUIRES: Vehicle connection
+#     # Verify vehicle heartbeat
 
-    vehicle_connection.wait_heartbeat()
-    print("Heartbeat from system (system %u component %u)" %
-        (vehicle_connection.target_system, vehicle_connection.target_component))
-    return True
+#     vehicle_connection.wait_heartbeat()
+#     print("Heartbeat from system (system %u component %u)" %
+#         (vehicle_connection.target_system, vehicle_connection.target_component))
+#     return True
 
-def connect_to_vehicle(port):
-    # PROMISES: Connection to the vehicle will be established
-    # REQUIRES: Vehicle network port
-    # Connect to the vehicle
+# def connect_to_vehicle(port):
+#     # PROMISES: Connection to the vehicle will be established
+#     # REQUIRES: Vehicle network port
+#     # Connect to the vehicle
 
-    vehicle_connection = mavutil.mavlink_connection(port)
-    return vehicle_connection
+#     vehicle_connection = mavutil.mavlink_connection(port)
+#     return vehicle_connection
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
@@ -154,11 +154,11 @@ if __name__ == "__main__":
     position_thread = threading.Thread(target=receive_vehicle_position, daemon=True)
     position_thread.start()
     
-    print("Attempting to connect to vehicle port: {vehicle_port}")
-    vehicle_connection = connect_to_vehicle(vehicle_port)
-    print("Vehicle connection established.")
-    retVal = verify_connection(vehicle_connection)
-    print("Vehicle connection verified.")
+    # print("Attempting to connect to vehicle port: {vehicle_port}")
+    # vehicle_connection = connect_to_vehicle(vehicle_port)
+    # print("Vehicle connection established.")
+    # retVal = verify_connection(vehicle_connection)
+    # print("Vehicle connection verified.")
 
     print("\nBeginning server with valid vehicle connection...")
 
