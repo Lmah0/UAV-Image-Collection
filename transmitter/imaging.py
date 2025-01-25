@@ -13,13 +13,15 @@ from pymavlink import mavutil
 from io import BytesIO
 
 
-gcs_url = "http://192.168.1.64:80"
+gcs_url = "http://192.168.1.65:80"
 vehicle_port = "udp:127.0.0.1:5006"
 
-DELAY = 1 # Amount of time between taking each picture
+DELAY = 0.25 # Amount of time between taking each picture
 picam2 = None
 vehicle_connection = None
 UDP_PORT = 5005
+
+image_number = 0
 
 vehicle_data = {
         "last_time": 0,
@@ -43,10 +45,11 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 def trigger_camera():
     # Requires the amount of images wanting to be taken
     global picam2
+    global image_number
     data = request.json
-    
+    is_camera_on = True
     try:
-        amount_of_images_requested = int(data["amount_of_images"])
+        is_camera_on = bool(data["is_camera_on"])
     except Exception as e:
         exit(1)
 
@@ -60,8 +63,9 @@ def trigger_camera():
     else:
         picam2.start()
 
-    for i in range(amount_of_images_requested):
-        delay_time_remaining = DELAY - take_picture(i, picam2)
+    while is_camera_on:
+        image_number+=1
+        delay_time_remaining = DELAY - take_picture(image_number, picam2)
         if delay_time_remaining > 0:
             time.sleep(delay_time_remaining)
     
@@ -85,16 +89,16 @@ def take_picture(image_number, picam2):
     headers = {} # API Request headers
 
     files = {
-        'file': (f'capture.jpg', image_stream, 'image/jpeg'),
+        'file': (f'capture{image_number}.jpg', image_stream, 'image/jpg'),
     }
     response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=files)
 
     # Send JSON to GCS (note that these need to be sent in a separate API request due to body datatype)
-    json_stream = BytesIO(vehicle_data_json.encode('utf-8'))
-    json_files = {
-        'file': (f'capture.json', json_stream, 'application/json'),
-    }
-    response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=json_files)
+    # json_stream = BytesIO(vehicle_data_json.encode('utf-8'))
+    # json_files = {
+    #     'file': (f'capture.json', json_stream, 'application/json'),
+    # }
+    # response = requests.request("POST", f"{gcs_url}/submit", headers=headers, files=json_files)
     
     return time.time() - start_time
 
@@ -133,8 +137,8 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         gcs_url = sys.argv[1]
 
-    position_thread = threading.Thread(target=receive_vehicle_position, daemon=True)
-    position_thread.start()
+    # position_thread = threading.Thread(target=receive_vehicle_position, daemon=True)
+    # position_thread.start()
 
     print("\nBeginning server with valid vehicle connection...")
 
